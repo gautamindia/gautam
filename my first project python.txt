@@ -1,0 +1,205 @@
+import os
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from twilio.rest import Client
+import phonenumbers
+import pywhatkit
+import geocoder
+import requests
+from bs4 import BeautifulSoup
+import pyttsx3
+import subprocess
+
+# Set default values for "From" and "To" phone numbers
+default_from_number = "+12563051847"
+default_to_number = "+916371090311"
+
+def send_email():
+    # Your email and password (you should use environment variables for security)
+    email_address = "ratikantrout171@gmail.com"
+    email_password = "habo alqa lqng gcvt"
+
+    to_email = input("Enter the recipient's email address: ")
+    subject = input("Enter the email subject: ")
+    message = input("Enter the email message: ")
+
+    msg = MIMEMultipart()
+    msg["From"] = email_address
+    msg["To"] = to_email
+    msg["Subject"] = subject
+
+    msg.attach(MIMEText(message, "plain"))
+
+    # Connect to the SMTP server (for Gmail)
+    server = smtplib.SMTP("smtp.gmail.com", 587)
+    server.starttls()
+    server.login(email_address, email_password)
+
+    # Send the email
+    server.sendmail(email_address, to_email, msg.as_string())
+
+    # Close the connection
+    server.quit()
+
+def send_sms():
+    # Your Twilio account SID and authentication token
+    account_sid = "AC2f8fa0f162ec0714b22414bd9274e103"
+    auth_token = "b2c0794a54c3d4eb51ee05eaeaf29581"
+
+    client = Client(account_sid, auth_token)
+
+    to_phone_number = default_to_number  # Use the default "To" phone number
+
+    # Validate and format the phone number using phonenumbers
+    try:
+        parsed_number = phonenumbers.parse(to_phone_number, "IN")
+        if not phonenumbers.is_valid_number(parsed_number):
+            print("Invalid phone number. Please enter a valid Indian phone number.")
+            return
+
+        to_phone_number = phonenumbers.format_number(parsed_number, phonenumbers.PhoneNumberFormat.E164)
+    except phonenumbers.phonenumberutil.NumberFormatException:
+        print("Invalid phone number. Please enter a valid Indian phone number.")
+        return
+
+    message = input("Enter the SMS message: ")
+
+    from_phone_number = default_from_number  # Use the default "From" phone number
+
+    message = client.messages.create(
+        body=message,
+        from_=from_phone_number,
+        to=to_phone_number
+    )
+
+    print(f"SMS sent with SID: {message.sid}")
+
+def send_whatsapp():
+    phone_number_input = input("Enter the recipient's phone number (without country code): ")
+    message = input("Enter the message you want to send: ")
+    hour = int(input("Enter the hour (0-23) to send the message: "))
+    minute = int(input("Enter the minute (0-59) to send the message: "))
+
+    try:
+        phone_number = phonenumbers.parse(phone_number_input, "IN")
+        phone_number_with_country_code = phonenumbers.format_number(phone_number, phonenumbers.PhoneNumberFormat.E164)
+    except phonenumbers.phonenumberutil.NumberFormatError:
+        print("Invalid phone number format.")
+        phone_number_with_country_code = None
+
+    if phone_number_with_country_code:
+        pywhatkit.sendwhatmsg(phone_number_with_country_code, message, hour, minute)
+        print("WhatsApp message sent successfully.")
+    else:
+        print("Failed to send the message. Please check the phone number format.")
+
+def get_geolocation(address):
+    try:
+        location = geocoder.osm(address)
+        latitude, longitude = location.latlng
+        return latitude, longitude
+    except Exception as e:
+        print(f"Error getting geolocation: {e}")
+        return None
+
+def geolocation_interaction():
+    print("-------------Geolocation Interaction-------------------------------")
+    address = input("Enter an address for geolocation: ")
+    coordinates = get_geolocation(address)
+
+    if coordinates:
+        print(f"Latitude: {coordinates[0]}, Longitude: {coordinates[1]}")
+    else:
+        print("Geolocation not available.")
+
+def get_wikipedia_data(topic):
+    wikipedia_url = f"https://en.wikipedia.org/wiki/{topic}"
+    response = requests.get(wikipedia_url)
+
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, 'html.parser')
+        title = soup.title.text
+        paragraphs = soup.find_all('p')
+
+        print(f"Title: {title}\n")
+
+        for paragraph in paragraphs:
+            print(paragraph.text)
+    else:
+        print(f"Failed to retrieve data. Status code: {response.status_code}")
+
+def control_speaker_volume():
+    try:
+        volume = float(input("Enter the volume value (0.0 to 1.0): "))
+        os.system(f"nircmd.exe setsysvolume {volume * 65535}")
+        print("Speaker volume adjusted successfully.")
+    except ValueError:
+        print("Invalid volume value. Please enter a float between 0.0 and 1.0.")
+
+def speak_text(text):
+    engine = pyttsx3.init()
+    engine.say(text)
+    engine.runAndWait()
+
+def play_video():
+    try:
+        # Replace "path_to_your_video.mp4" with the actual path to your video file
+        video_path = input("Enter the path to the video file: ")
+        subprocess.Popen([video_path], shell=True)
+        input("Press Enter to stop playing...")
+    except Exception as e:
+        print(f"Error playing video: {e}")
+
+if __name__ == "__main__":
+    print("-------------Welcome To My Project-------------------------------")
+
+    while True:
+        print("""
+        press 1: to send email
+        press 2: to send SMS
+        press 3: to send WhatsApp
+        press 4: to open Chrome
+        press 5: to open Notepad
+        press 6: for geolocation
+        press 7: to get Wikipedia data
+        press 8: to control speaker volume
+        press 9: to convert text to speech
+        press 10: to play video
+        press 11: to exit
+        """)
+
+        ch = input("Enter Your Choice: ")
+
+        if ch == "1":
+            send_email()
+            print("Email sent successfully.")
+        elif ch == "2":
+            send_sms()
+            print("SMS sent successfully.")
+        elif ch == "3":
+            send_whatsapp()
+        elif ch == "4":
+            try:
+                os.system(r"C:\Users\hp\Downloads\ChromeSetup.exe")
+                print("Chrome opened successfully.")
+            except Exception as e:
+                print(f"Error opening Chrome: {e}")
+        elif ch == "5":
+            os.system("notepad")
+        elif ch == "6":
+            geolocation_interaction()
+        elif ch == "7":
+            topic = input("Enter the topic for Wikipedia data: ")
+            get_wikipedia_data(topic)
+        elif ch == "8":
+            control_speaker_volume()
+        elif ch == "9":
+            text_to_speak = input("Enter the text to speak: ")
+            speak_text(text_to_speak)
+        elif ch == "10":
+            play_video()
+        elif ch == "11":
+            break
+        else:
+            print("Not supported")
